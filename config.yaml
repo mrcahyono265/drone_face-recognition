@@ -1,0 +1,48 @@
+camera:
+  source: 1
+  type: "webcam"
+  rtsp_url: "rtsp://192.168.1.1:7070/webcam"
+
+dataset:
+  root: "dataset"
+  enrollment_images: "enrollment/images"
+  enrollment_videos: "enrollment/videos"
+  supported_image_formats: [".jpg", ".jpeg"]
+  supported_video_formats: [".mp4"]
+
+recognition:
+  similarity_threshold: 0.45
+  model_name: "buffalo_sc"
+  det_size: [320, 320]
+
+spoofing:
+  model_path: "models/MiniFASNetV2.onnx"
+  liveness_threshold: 0.85
+
+processing:
+  frame_skip: 4
+  fps_smoothing: 0.9
+
+database:
+  mode: "multiple"
+  embeddings_dir: "database/embeddings"
+
+enrollment:
+  duplicate_threshold: 0.995
+  sampling_interval_ms: 300
+
+  validation:
+    min_face_size: 80
+    min_face_confidence: 0.7
+    max_blur_score: 650
+
+output:
+  snapshot_dir: "inference_output"
+  video_dir: "inference_output"
+
+reports:
+  enrollment_dir: "reports/enrollment"
+
+logging:
+  level: "INFO"
+  verbose: false

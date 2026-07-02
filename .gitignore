@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
+
+# Dataset and raw data (too large for git)
+dataset/
+*.raw
+
+# Inference outputs (generated during runtime)
+inference_output/
+*.jpg
+*.png
+*.avi
+*.mp4
+
+# Database files (will be regenerated)
+*.pkl
+face_db.pkl
+
+# Temporary files
+*.tmp
+*.log
+
+# Reports
+reports/
+*.csv
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Models (large files - consider using Git LFS)
+# models/*.onnx
+# models/*.pth
+# models/*.h5
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
