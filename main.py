@@ -3,12 +3,52 @@ import time
 import pickle
 import yaml
 import numpy as np
+import statistics
 from datetime import datetime
 from src.camera.webcam_camera import cameraDroneThread
 from src.recognition.recognizer import Models
 from src.ui.display import UI
 from src.spoof.antispoof import MiniFASNetV2
 from src.database.database import EmbeddingDatabase
+
+
+def calculate_statistics(times_or_scores, name="Stage", is_time=True):
+    """
+    Calculate descriptive statistics for a list of times or scores.
+    
+    Args:
+        times_or_scores: List of values (times in seconds or similarity scores)
+        name: Name of the stage/metric
+        is_time: If True, values are times (convert to ms), else raw values
+    
+    Returns:
+        Dictionary with statistics or None if list is empty
+    """
+    if not times_or_scores:
+        return None
+    
+    # Convert times to milliseconds if needed
+    if is_time:
+        values = [t * 1000 for t in times_or_scores]  # Convert to ms
+        unit = "ms"
+    else:
+        values = times_or_scores
+        unit = ""
+    
+    mean_val = statistics.mean(values)
+    min_val = min(values)
+    max_val = max(values)
+    std_val = statistics.stdev(values) if len(values) > 1 else 0.0
+    
+    return {
+        'name': name,
+        'mean': mean_val,
+        'min': min_val,
+        'max': max_val,
+        'std': std_val,
+        'count': len(values),
+        'unit': unit
+    }
 
 
 def main():
@@ -74,6 +114,9 @@ def main():
     unknown_recognitions = 0
     spoof_detections = 0
     
+    # Similarity measurement for recognized faces
+    similarity_scores = []
+    
     # Pipeline timing metrics (processing only, excludes async camera capture)
     detection_times = []
     recognition_times = []
@@ -88,6 +131,9 @@ def main():
     frame_count = 0
     recognition_count = 0
     prev_recognition_time = time.time()
+    
+    # Effective FPS calculation
+    effective_fps = 0.0
     
     # Saving Temporary face
     last_detected_faces = []
@@ -164,6 +210,9 @@ def main():
                 embedding_comparisons += comparisons
                 total_recognitions += 1
                 
+                # Record similarity score for analysis
+                similarity_scores.append(max_sim)
+                
                 # Compare with database
                 if max_sim >= SIMILARITY_THRESHOLD:
                     display_name = f"{identity} ({max_sim:.2f})"
@@ -228,6 +277,19 @@ def main():
             pipeline_time = ui_time
         
         total_pipeline_times.append(pipeline_time)
+        
+        # Calculate Effective Processing FPS (EMA smoothed)
+        if len(total_pipeline_times) > 0:
+            avg_pipeline = sum(total_pipeline_times) / len(total_pipeline_times)
+            if avg_pipeline > 0:
+                current_effective_fps = 1000.0 / avg_pipeline
+                # Apply EMA smoothing using config value
+                effective_fps = (fps_smoothing * effective_fps) + \
+                               ((1 - fps_smoothing) * current_effective_fps)
+        
+        # Display Effective Processing FPS on frame
+        cv2.putText(frame, f"FPS: {int(effective_fps)}", 
+                   (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
         if key == ord('q'):
             break
@@ -246,51 +308,88 @@ def main():
     print(f'Total Recognition Events: {recognition_count}')
     print('')
     
-    print('PROCESSING STAGE TIMING:')
+    print('PROCESSING STAGE TIMING (with statistics):')
     print('-' * 70)
-    print('  (All times measured per execution, not averaged per frame)')
+    print('  (All times in milliseconds)')
     print('')
     
+    # Detection statistics
     if detection_times:
-        avg_detection = sum(detection_times)/len(detection_times) * 1000
-        print(f'  1. Face Detection:        {avg_detection:.2f} ms (avg per inference)')
+        stats = calculate_statistics(detection_times, "Face Detection", is_time=True)
+        print(f'  1. Face Detection:')
+        print(f'     Mean: {stats["mean"]:7.2f} ms  |  '
+              f'Min: {stats["min"]:7.2f} ms  |  '
+              f'Max: {stats["max"]:7.2f} ms  |  '
+              f'Std: {stats["std"]:5.2f} ms')
+        print(f'     (n={stats["count"]} inferences)')
+        print('')
     
+    # Recognition statistics
     if recognition_times:
-        avg_recognition = sum(recognition_times)/len(recognition_times) * 1000
-        print(f'  2. Recognition (compare):   {avg_recognition:.2f} ms (avg per face)')
+        stats = calculate_statistics(recognition_times, "Recognition", is_time=True)
+        print(f'  2. Recognition (compare):')
+        print(f'     Mean: {stats["mean"]:7.2f} ms  |  '
+              f'Min: {stats["min"]:7.2f} ms  |  '
+              f'Max: {stats["max"]:7.2f} ms  |  '
+              f'Std: {stats["std"]:5.2f} ms')
+        print(f'     (n={stats["count"]} faces)')
+        print('')
     
+    # MiniFASNet statistics
     if minifasnet_times:
-        avg_minifasnet = sum(minifasnet_times)/len(minifasnet_times) * 1000
-        print(f'  3. MiniFASNet V2:         {avg_minifasnet:.2f} ms (avg per face)')
+        stats = calculate_statistics(minifasnet_times, "MiniFASNet V2", is_time=True)
+        print(f'  3. MiniFASNet V2:')
+        print(f'     Mean: {stats["mean"]:7.2f} ms  |  '
+              f'Min: {stats["min"]:7.2f} ms  |  '
+              f'Max: {stats["max"]:7.2f} ms  |  '
+              f'Std: {stats["std"]:5.2f} ms')
+        print(f'     (n={stats["count"]} faces)')
+        print('')
     
+    # UI statistics
     if ui_times:
-        avg_ui = sum(ui_times)/len(ui_times) * 1000
-        print(f'  4. UI Rendering:          {avg_ui:.2f} ms (avg per frame)')
-        print(f'     (includes: drawing + process_ui + imshow + waitKey)')
+        stats = calculate_statistics(ui_times, "UI Rendering", is_time=True)
+        print(f'  4. UI Rendering:')
+        print(f'     Mean: {stats["mean"]:7.2f} ms  |  '
+              f'Min: {stats["min"]:7.2f} ms  |  '
+              f'Max: {stats["max"]:7.2f} ms  |  '
+              f'Std: {stats["std"]:5.2f} ms')
+        print(f'     (n={stats["count"]} frames)')
+        print('')
     
-    print('')
-    
+    # Total Pipeline statistics
     if total_pipeline_times:
-        avg_pipeline = sum(total_pipeline_times)/len(total_pipeline_times) * 1000
-        effective_fps = 1000.0 / avg_pipeline if avg_pipeline > 0 else 0
+        stats = calculate_statistics(total_pipeline_times, "Total Pipeline", is_time=True)
+        avg_pipeline = stats["mean"]
+        effective_fps_final = 1000.0 / avg_pipeline if avg_pipeline > 0 else 0
         
-        print(f'  TOTAL Pipeline:           {avg_pipeline:.2f} ms (avg per frame)')
-        print(f'  Effective Processing FPS: {effective_fps:.2f} FPS')
+        print(f'  TOTAL Pipeline:')
+        print(f'     Mean: {stats["mean"]:7.2f} ms  |  '
+              f'Min: {stats["min"]:7.2f} ms  |  '
+              f'Max: {stats["max"]:7.2f} ms  |  '
+              f'Std: {stats["std"]:5.2f} ms')
+        print(f'     (n={stats["count"]} frames)')
+        print('')
+        print(f'  Effective Processing FPS: {effective_fps_final:.2f} FPS')
         print('')
         
         # Validation: check if total is consistent with sum of stages
         # For recognition frames: total ≈ detection + recognition + minifasnet + ui
         # For non-recognition frames: total ≈ ui only
-        # This is a rough estimate since detection runs every N frames
         recognition_frames = len(detection_times)
         non_recognition_frames = frame_count - recognition_frames
         
         if recognition_frames > 0 and non_recognition_frames > 0:
+            det_avg = sum(detection_times)/len(detection_times) * 1000 if detection_times else 0
+            rec_avg = sum(recognition_times)/len(recognition_times) * 1000 if recognition_times else 0
+            minifasnet_avg = sum(minifasnet_times)/len(minifasnet_times) * 1000 if minifasnet_times else 0
+            ui_avg = sum(ui_times)/len(ui_times) * 1000 if ui_times else 0
+            
             expected_total = (
-                (avg_detection * recognition_frames) +
-                (avg_recognition * recognition_frames * 1.0) +  # assume 1 face avg
-                (avg_minifasnet * recognition_frames * 1.0) +
-                (avg_ui * frame_count)
+                (det_avg * recognition_frames) +
+                (rec_avg * recognition_frames * 1.0) +  # assume 1 face avg
+                (minifasnet_avg * recognition_frames * 1.0) +
+                (ui_avg * frame_count)
             ) / frame_count
             
             print(f'  [Validation]')
@@ -306,17 +405,6 @@ def main():
                 print(f'    Note: Total includes all processing overhead, not just stage times')
     
     print('')
-    print('FPS METRICS:')
-    print('-' * 70)
-    
-    # Calculate camera FPS from frame count and total time
-    # This is the actual throughput of the camera thread
-    if camera_fps_values:
-        # Camera FPS is measured separately, just show info
-        print(f'  Note: Camera capture is asynchronous (threaded)')
-        print(f'        Camera FPS not included in pipeline timing')
-    
-    print('')
     print('RECOGNITION METRICS:')
     print('-' * 70)
     if total_recognitions > 0:
@@ -329,6 +417,17 @@ def main():
         print(f'  Unknown (<threshold):   {unknown_recognitions} ({unknown_recognitions/total_recognitions*100:.1f}%)')
         print(f'  Avg Comparisons:        {embedding_comparisons/total_recognitions:.1f}')
         print(f'  Recognition Rate:       {recognition_rate:.2f} recognitions/sec')
+        
+        # Similarity score statistics
+        if similarity_scores:
+            sim_stats = calculate_statistics(similarity_scores, "Similarity Score", is_time=False)
+            print('')
+            print(f'  SIMILARITY SCORE STATISTICS:')
+            print(f'     Mean: {sim_stats["mean"]:7.4f}  |  '
+                  f'Min: {sim_stats["min"]:7.4f}  |  '
+                  f'Max: {sim_stats["max"]:7.4f}  |  '
+                  f'Std: {sim_stats["std"]:5.4f}')
+            print(f'     (n={sim_stats["count"]} recognition events)')
     print('')
     
     print('ANTI-SPOOFING METRICS:')
