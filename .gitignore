@@ -41,15 +41,15 @@ Thumbs.db
 # Project Specific
 
 # Dataset and raw data (too large for git)
-dataset/
+# dataset/
 *.raw
 
 # Inference outputs (generated during runtime)
 inference_output/
-*.jpg
-*.png
-*.avi
-*.mp4
+# *.jpg
+# *.png
+# *.avi
+# *.mp4
 
 # Database files (will be regenerated)
 *.pkl
