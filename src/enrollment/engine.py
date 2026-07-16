@@ -98,3 +98,32 @@ class EnrollmentEngine:
         is_duplicate = max_similarity > self.duplicate_threshold
         
         return is_duplicate, max_similarity
+
+
+if __name__ == "__main__":
+    import sys, os, tempfile, shutil
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from src.database.database import EmbeddingDatabase
+
+    tmpdir = tempfile.mkdtemp()
+    db = EmbeddingDatabase(tmpdir)
+    eng = EnrollmentEngine(duplicate_threshold=0.9)
+
+    rng = np.random.default_rng(42)
+    emb1 = rng.standard_normal(512).astype(np.float32)
+    emb1 /= np.linalg.norm(emb1)
+    emb2 = rng.standard_normal(512).astype(np.float32)
+    emb2 /= np.linalg.norm(emb2)
+
+    is_dup, sim = eng._check_duplicate(emb1, "alice", db)
+    assert not is_dup and sim == 0.0
+
+    db.add_embedding("alice", emb1)
+    is_dup, sim = eng._check_duplicate(emb1, "alice", db)
+    assert is_dup and sim > 0.9
+
+    is_dup, sim = eng._check_duplicate(emb2, "alice", db)
+    assert not is_dup
+
+    shutil.rmtree(tmpdir)
+    print("[OK] engine.py self-check passed")

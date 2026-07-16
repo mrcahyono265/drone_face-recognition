@@ -12,9 +12,6 @@ from src.database.database import EmbeddingDatabase
 from src.utils import _setup_cuda_paths, load_config
 
 
-EMA_ALPHA = 0.3
-
-
 def _load_config():
     config = load_config()
 
@@ -46,11 +43,11 @@ def init_components(config):
         _setup_cuda_paths()
 
     if config["camera"]["type"] == "webcam":
-        from src.camera.webcam_camera import cameraDroneThread
-        camera = cameraDroneThread(config["camera"]["source"]).start()
+        from src.camera.webcam_camera import WebcamStream
+        camera = WebcamStream(config["camera"]["source"]).start()
     else:
-        from src.camera.rtsp_camera import cameraDroneThread
-        camera = cameraDroneThread(config["camera"]["rtsp_url"]).start()
+        from src.camera.rtsp_camera import RTSPStream
+        camera = RTSPStream(config["camera"]["rtsp_url"]).start()
 
     models = Models(provider=provider, model_name=config["recognition"]["model_name"],
                     det_size=tuple(config["recognition"]["det_size"]))
@@ -107,17 +104,13 @@ def main():
     fps_smoothing = config["processing"]["fps_smoothing"]
     headless = config.get("processing", {}).get("headless", False)
 
-    total_recognitions = 0
-    accepted_recognitions = 0
-    spoof_detections = 0
-
     detection_times = []
     total_pipeline_times = []
 
     frame_count = 0
     effective_fps = 0.0
     last_detected_faces = []
-    ema_liveness_score = 0.0
+    identity_stats = {}
 
     print("[INFO] Running...")
     app_instance = UI()
@@ -161,29 +154,31 @@ def main():
                             max_sim = sim
                             identity = name
 
-                total_recognitions += 1
-
                 if max_sim >= SIMILARITY_THRESHOLD:
                     display_name = f"{identity} ({max_sim:.2f})"
                     id_color = (0, 255, 0)
-                    accepted_recognitions += 1
                 else:
+                    identity = "Unknown"
                     display_name = f"Unknown ({max_sim:.2f})"
                     id_color = (0, 255, 255)
 
+                c, s = identity_stats.get(identity, (0, 0.0))
+                identity_stats[identity] = (c + 1, s + max_sim)
+
                 is_real, raw_liveness_score = liveness.check_liveness(frame, bbox)
 
-                ema_liveness_score = (EMA_ALPHA * raw_liveness_score) + ((1 - EMA_ALPHA) * ema_liveness_score)
                 liveness_label = "Real" if is_real else "Spoof"
                 color = (0, 255, 0) if is_real else (0, 0, 255)
-                if not is_real:
-                    spoof_detections += 1
 
                 last_detected_faces.append((bbox, display_name, liveness_label,
-                                            raw_liveness_score, ema_liveness_score, id_color, color))
+                                            max_sim, raw_liveness_score, id_color, color))
+
+            if last_detected_faces:
+                parts = [f"[{n} {s:.2f} ({l} {r:.2f})]" for _, n, l, s, r, _, _ in last_detected_faces]
+                print(" ".join(parts))
 
         ui_start = time.time()
-        for bbox, display_name, liveness_label, raw_score, ema_score, id_color, color in last_detected_faces:
+        for bbox, display_name, liveness_label, _, raw_score, id_color, color in last_detected_faces:
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), id_color, 2)
             cv2.putText(frame, display_name, (bbox[0], bbox[1] - 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, id_color, 2)
             cv2.putText(frame, f"{liveness_label} ({raw_score:.2f})", (bbox[0], bbox[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
@@ -219,7 +214,7 @@ def main():
 
     print('')
     print('=' * 50)
-    print('PERFORMANCE SUMMARY')
+    print('SUMMARY')
     print('=' * 50)
 
     if total_pipeline_times:
@@ -231,11 +226,12 @@ def main():
         avg_det = sum(detection_times) / len(detection_times) * 1000
         print(f'  Detection Latency:      {avg_det:.1f} ms')
 
-    if total_recognitions > 0:
-        acc = accepted_recognitions / total_recognitions * 100
-        print(f'  Recognition Accuracy:   {acc:.1f}%  ({accepted_recognitions}/{total_recognitions})')
+    if identity_stats:
+        print('---')
+        for name, (c, s) in sorted(identity_stats.items()):
+            avg = s / c
+            print(f'  {name:<20} {avg:.2f} avg ({c}x)')
 
-    print(f'  Spoof Detections:       {spoof_detections}')
     print('=' * 50)
     print('')
 

@@ -44,3 +44,22 @@ class FrameValidator:
             return float('inf')
         gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
         return cv2.Laplacian(gray, cv2.CV_64F).var()
+
+
+if __name__ == "__main__":
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    val = FrameValidator(min_face_size=80, max_blur_score=650)
+
+    uniform = np.ones((200, 200, 3), dtype=np.uint8) * 128
+    score = val.compute_blur_score(uniform, (10, 10, 100, 100))
+    assert score < 10, f"uniform image should have low blur, got {score}"
+
+    sharp = np.random.randint(0, 256, (200, 200, 3), dtype=np.uint8)
+    score = val.compute_blur_score(sharp, (10, 10, 100, 100))
+    assert score > 10, f"noisy image should have high blur, got {score}"
+
+    score = val.compute_blur_score(uniform, (10, 10, 10, 10))
+    assert score == float('inf'), f"zero-size crop should give inf, got {score}"
+
+    print("[OK] frame_validator.py self-check passed")

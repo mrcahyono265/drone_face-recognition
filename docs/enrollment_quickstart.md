@@ -4,12 +4,12 @@
 
 ### **Image Enrollment**
 ```bash
-.\.venv\Scripts\python.exe tools\enroll_image.py
+uv run python tools\enroll_image.py
 ```
 
 ### **Video Enrollment**
 ```bash
-.\.venv\Scripts\python.exe tools\enroll_video.py
+uv run python tools\enroll_video.py
 ```
 
 ---
@@ -189,4 +189,4 @@ logging:
 
 ## 📚 More Info
 
-See `docs/08_AUTOMATED_ENROLLMENT_COMPLETE.md` for full documentation.
+See [README.md](../README.md) for full project documentation.

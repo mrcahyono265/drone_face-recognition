@@ -4,7 +4,7 @@ import time
 import pickle
 import numpy as np
 from datetime import datetime
-from src.camera.webcam_camera import cameraDroneThread
+from src.camera.webcam_camera import WebcamStream
 from src.recognition.recognizer import Models
 from src.spoof.antispoof import MiniFASNetV2
 from src.database.database import EmbeddingDatabase
@@ -32,7 +32,7 @@ def run_comparison_test(database_mode, num_frames=100):
         config = yaml.safe_load(f)
     
     # Initialize components
-    camera = cameraDroneThread(config['camera']['source']).start()
+    camera = WebcamStream(config['camera']['source']).start()
     models = Models()
     liveness = MiniFASNetV2()
     

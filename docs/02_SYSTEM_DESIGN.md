@@ -55,7 +55,7 @@ The project consists of several independent modules.
 5. Enrollment Module
 6. Embedding Database Module
 7. User Interface Module
-8. Evaluation Module
+8. Tools Module (enrollment, analysis, benchmark)
 
 Each module should have a single responsibility.
 
@@ -349,45 +349,26 @@ Each person owns an independent dataset.
 
 The project should be modular.
 
-Suggested structure
+Actual structure
 
-project/
-
-├── configs/
-
-├── dataset/
-
-├── database/
-
-├── docs/
-
-├── logs/
-
-├── models/
-
-├── output/
-
+├── main.py                      # Entry point
+├── config.yaml                  # Configuration
+├── pyproject.toml               # Dependencies & metadata
 ├── src/
-
-│ ├── camera/
-
-│ ├── recognition/
-
-│ ├── spoof/
-
-│ ├── enrollment/
-
-│ ├── database/
-
-│ ├── evaluation/
-
-│ ├── ui/
-
-│ └── utils/
-
-├── main.py
-
-└── requirements.txt
+│   ├── camera/                  # WebcamStream, RTSPStream
+│   ├── recognition/             # Models (InsightFace)
+│   ├── spoof/                   # MiniFASNetV2
+│   ├── database/                # EmbeddingDatabase
+│   ├── enrollment/              # EnrollmentEngine, FrameValidator, VideoFrameSampler
+│   ├── dataset/                 # Dataset utilities
+│   ├── ui/                      # Display, snapshot, recording
+│   └── utils.py                 # CUDA paths, config, CSV helpers
+├── tools/                       # Enrollment & analysis scripts
+├── scripts/                     # setup.ps1
+├── models/                      # ONNX model files
+├── database/embeddings/         # Generated face embeddings
+├── dataset/                     # Enrollment images & videos
+└── docs/                        # Documentation
 
 ---
 
@@ -413,9 +394,9 @@ Database
 
 Responsible only for loading and saving embeddings.
 
-Evaluation
+Tools
 
-Responsible only for calculating metrics.
+Responsible for enrollment, analysis, and benchmark scripts.
 
 UI
 

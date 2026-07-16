@@ -88,3 +88,37 @@ class EmbeddingDatabase:
 
     def get_total_embedding_count(self):
         return sum(len(embs) for embs in self.embeddings.values())
+
+
+if __name__ == "__main__":
+    import tempfile, shutil
+    tmpdir = tempfile.mkdtemp()
+    db = EmbeddingDatabase(tmpdir)
+
+    rng = np.random.default_rng(42)
+    emb1 = rng.standard_normal(512).astype(np.float32)
+    emb1 /= np.linalg.norm(emb1)
+    emb2 = rng.standard_normal(512).astype(np.float32)
+    emb2 /= np.linalg.norm(emb2)
+
+    db.add_embedding("alice", emb1)
+    db.add_embedding("alice", emb2)
+    db.add_embedding("bob", emb1)
+
+    db2 = EmbeddingDatabase(tmpdir)
+    db2.load()
+
+    assert db2.get_total_embedding_count() == 3
+    assert set(db2.get_person_names()) == {"alice", "bob"}
+    assert db2.get_embedding_count("alice") == 2
+    assert db2.get_embedding_count("bob") == 1
+
+    all_embs = db2.get_all_embeddings()
+    assert len(all_embs["alice"]) == 2
+    assert len(all_embs["bob"]) == 1
+    for name, embs in all_embs.items():
+        for e in embs:
+            assert abs(np.linalg.norm(e) - 1.0) < 1e-6
+
+    shutil.rmtree(tmpdir)
+    print("[OK] database.py self-check passed")

@@ -11,7 +11,7 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
 )
 
 
-class cameraDroneThread:
+class RTSPStream:
     def __init__(self, rtsp_url):
         self.url = rtsp_url
         print("[INFO]: Connecting drone...")

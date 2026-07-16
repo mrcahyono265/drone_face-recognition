@@ -3,7 +3,7 @@ import platform
 import time
 import threading
 
-class cameraDroneThread:
+class WebcamStream:
     def __init__(self, src=0):
         print(f"[INFO]: Connecting to camera {src}...")
 

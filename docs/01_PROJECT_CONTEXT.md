@@ -151,17 +151,22 @@ For every detected face:
 
 - Bounding Box
 - Identity
-- Confidence Score
-- Real / Spoof Status
-- FPS
+- Similarity Score
+- Liveness (Real / Spoof)
+- FPS per frame
 
-Example
+Example (CMD output per detection frame):
 
-Ridho
+[Alice 0.87 (Real 0.92)] [Unknown 0.34 (Spoof 0.12)]
 
-Confidence : 0.87
+Summary at shutdown:
 
-Status : Real
+=== SUMMARY ===
+  FPS:                   24.3
+  Detection Latency:     12.1 ms
+---
+  Alice                 0.87 avg (142x)
+  Unknown               0.34 avg (23x)
 
 ---
 
@@ -217,3 +222,11 @@ The AI MUST ALWAYS:
 The primary goal is producing a stable and modular research prototype suitable for undergraduate thesis evaluation.
 
 Code readability, modularity, maintainability, and research consistency are prioritized over implementing unnecessary features.
+
+# Headless Mode
+
+The system supports headless mode for devices without a display (e.g. onboard drone processing).
+
+When `processing.headless: true` in config.yaml, all GUI calls (imshow, waitKey, namedWindow, destroyAllWindows) are skipped.
+
+Recognition runs silently with CMD output only.
