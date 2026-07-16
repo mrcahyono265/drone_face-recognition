@@ -33,14 +33,14 @@ Write-Host "  Dependencies installed" -ForegroundColor Green
 # Verify
 Write-Host "[3/4] Verifying..." -ForegroundColor Yellow
 try {
-    $nv = python -c "import numpy; print('NumPy', numpy.__version__)"
+    $nv = uv run python -c "import numpy; print('NumPy', numpy.__version__)"
     Write-Host "  $nv" -ForegroundColor Green
-    $ov = python -c "import cv2; print('OpenCV', cv2.__version__)"
+    $ov = uv run python -c "import cv2; print('OpenCV', cv2.__version__)"
     Write-Host "  $ov" -ForegroundColor Green
-    $iv = python -c "from insightface.app import FaceAnalysis; print('InsightFace OK')"
+    $iv = uv run python -c "from insightface.app import FaceAnalysis; print('InsightFace OK')"
     Write-Host "  $iv" -ForegroundColor Green
     if (-not $CPU) {
-        $gpu = python -c "import onnxruntime as ort; print('ONNX:', ort.get_device())" 2>$null
+        $gpu = uv run python -c "import onnxruntime as ort; print('ONNX:', ort.get_device())" 2>$null
         if ($?) { Write-Host "  $gpu" -ForegroundColor Green }
         else { Write-Host "  ONNX: CPU only (no CUDA)" -ForegroundColor Yellow }
     }
@@ -56,11 +56,11 @@ if (-not (Test-Path "database/embeddings")) { New-Item -ItemType Directory -Path
 if (-not (Test-Path "models/MiniFASNetV2.onnx")) {
     Write-Host "  WARNING: models/MiniFASNetV2.onnx not found! Download it first." -ForegroundColor Yellow
 }
-$provider = if ($CPU) { "cpu" } else { python -c "import onnxruntime as ort; print('cuda' if ort.get_device() == 'GPU' else 'cpu')" 2>$null }
+$provider = if ($CPU) { "cpu" } else { uv run python -c "import onnxruntime as ort; print('cuda' if ort.get_device() == 'GPU' else 'cpu')" 2>$null }
 if (-not $?) { $provider = "cpu" }
 Write-Host "  Default provider: $provider (edit config.yaml to change)" -ForegroundColor Gray
 
 Write-Host ""
 Write-Host "Setup complete!" -ForegroundColor Green
-Write-Host "Run: python main.py" -ForegroundColor White
+Write-Host "Run: uv run python main.py" -ForegroundColor White
 Write-Host "Or : .\.venv\Scripts\Activate.ps1 ; python main.py" -ForegroundColor Gray
