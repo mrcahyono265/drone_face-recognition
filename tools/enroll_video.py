@@ -157,7 +157,7 @@ def process_video(
                     ])
                 else:
                     # Check blur (need to compute)
-                    blur_score = validator._compute_blur_score(frame, bbox)
+                    blur_score = validator.compute_blur_score(frame, bbox)
                     if blur_score > validator.max_blur_score:
                         reason = "blurry"
                         stats['blurry'] += 1

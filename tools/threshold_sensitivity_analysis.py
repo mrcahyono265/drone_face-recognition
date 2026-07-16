@@ -40,9 +40,9 @@ def run_sensitivity_analysis():
     # Results storage
     results = []
     
-    # Clean database before each run
     db_path = base_config['database']['embeddings_dir']
     if os.path.exists(db_path):
+        print(f"[INFO] Cleaning database: {db_path}")
         shutil.rmtree(db_path)
     os.makedirs(db_path)
     

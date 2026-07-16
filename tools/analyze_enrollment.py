@@ -22,9 +22,12 @@ def analyze_enrollment_data():
     - Embedding redundancy
     """
     
-    # Load config
-    with open('config.yaml', 'r') as f:
-        config = yaml.safe_load(f)
+    try:
+        with open('config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        print(f"[ERROR] Failed to load config.yaml: {e}")
+        return
     
     print('=' * 70)
     print('ENROLLMENT STATISTICAL ANALYSIS')
