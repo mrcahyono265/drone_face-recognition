@@ -1,5 +1,5 @@
 import cv2
-import time
+import platform
 import threading
 import os
 
@@ -10,8 +10,10 @@ class cameraDroneThread:
     def __init__(self, src=1): # Parameter diubah namanya jadi 'src' agar lebih umum
         print(f"[INFO]: Connecting to camera {src}...")
         
-        # Hapus cv2.CAP_FFMPEG agar bisa dipakai untuk webcam lokal
-        self.stream = cv2.VideoCapture(src) 
+        if platform.system() == "Windows":
+            self.stream = cv2.VideoCapture(src, cv2.CAP_DSHOW)
+        else:
+            self.stream = cv2.VideoCapture(src)
         self.stream.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
         # read first frame
