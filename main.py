@@ -81,32 +81,6 @@ def init_components(config):
             exit(1)
 
 
-def print_summary(detection_times, total_pipeline_times,
-                  total_recognitions, accepted_recognitions,
-                  spoof_detections):
-    print('')
-    print('=' * 50)
-    print('PERFORMANCE SUMMARY')
-    print('=' * 50)
-
-    if total_pipeline_times:
-        avg_ms = sum(total_pipeline_times) / len(total_pipeline_times) * 1000
-        fps = 1000.0 / avg_ms if avg_ms > 0 else 0
-        print(f'  FPS:                    {fps:.1f}')
-
-    if detection_times:
-        avg_det = sum(detection_times) / len(detection_times) * 1000
-        print(f'  Detection Latency:      {avg_det:.1f} ms')
-
-    if total_recognitions > 0:
-        acc = accepted_recognitions / total_recognitions * 100
-        print(f'  Recognition Accuracy:   {acc:.1f}%  ({accepted_recognitions}/{total_recognitions})')
-
-    print(f'  Spoof Detections:       {spoof_detections}')
-    print('=' * 50)
-    print('')
-
-
 _cleanup_components = None
 
 
@@ -243,9 +217,27 @@ def main():
         else:
             time.sleep(0.001)
 
-    print_summary(detection_times, total_pipeline_times,
-                  total_recognitions, accepted_recognitions,
-                  spoof_detections)
+    print('')
+    print('=' * 50)
+    print('PERFORMANCE SUMMARY')
+    print('=' * 50)
+
+    if total_pipeline_times:
+        avg_ms = sum(total_pipeline_times) / len(total_pipeline_times) * 1000
+        fps = 1000.0 / avg_ms if avg_ms > 0 else 0
+        print(f'  FPS:                    {fps:.1f}')
+
+    if detection_times:
+        avg_det = sum(detection_times) / len(detection_times) * 1000
+        print(f'  Detection Latency:      {avg_det:.1f} ms')
+
+    if total_recognitions > 0:
+        acc = accepted_recognitions / total_recognitions * 100
+        print(f'  Recognition Accuracy:   {acc:.1f}%  ({accepted_recognitions}/{total_recognitions})')
+
+    print(f'  Spoof Detections:       {spoof_detections}')
+    print('=' * 50)
+    print('')
 
     camera.stop()
     app_instance.cleanup()

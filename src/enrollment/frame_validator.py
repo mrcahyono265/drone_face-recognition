@@ -5,101 +5,42 @@ from src.recognition.recognizer import Models
 
 
 class FrameValidator:
-    """
-    Frame validation layer for video and image enrollment.
-    
-    Validates whether a frame is suitable for enrollment before
-    passing it to the Enrollment Engine.
-    
-    Validation checks (progressive):
-        1. Exactly one face detected
-        2. Minimum face size
-        3. Detection confidence threshold
-        4. Blur detection (Variance of Laplacian)
-    
-    The validator does NOT extract embeddings or save to database.
-    It only validates frame suitability and returns validated face data.
-    
-    Architecture:
-        - validate(frame): Convenience wrapper with internal detection
-        - validate_with_faces(faces, frame): Optimized path with pre-detected faces
-    """
-    
-    def __init__(self, 
-                 min_face_size=80,
-                 min_face_confidence=0.7,
-                 max_blur_score=100.0,
-                 models=None):
+    def __init__(self, min_face_size=80, min_face_confidence=0.7, max_blur_score=100.0, models=None):
         self.min_face_size = min_face_size
         self.min_face_confidence = min_face_confidence
         self.max_blur_score = max_blur_score
         self.models = models if models is not None else Models()
-    
-    def validate_with_faces(self, 
-                           faces: List[Any], 
-                           frame: np.ndarray) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        """
-        Validate frame with pre-detected faces.
-        
-        This method avoids duplicate face detection. The face detection
-        should be performed once externally, then passed to this method.
-        
-        Args:
-            faces: List of detected faces from InsightFace
-            frame: BGR frame (numpy array)
-        
-        Returns:
-            (is_valid, face_data)
-                is_valid: True if frame is suitable for enrollment
-                face_data: Dict with validated face information (if valid)
-                          None if validation failed
-        """
-        # Validation Rule 1: Exactly one face
+
+    def validate_with_faces(self, faces, frame):
         if len(faces) == 0:
             return False, None
-        
         if len(faces) > 1:
             return False, None
-        
+
         face = faces[0]
-        
-        # Extract face information
         bbox = face.bbox.astype(int)
-        confidence = getattr(face, 'det_score', 0.0)  # Detection confidence
+        confidence = getattr(face, 'det_score', 0.0)
         embedding = face.embedding
-        face_size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])  # Width or height
-        
-        # Validation Rule 2: Minimum face size
+        face_size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
+
         if face_size < self.min_face_size:
             return False, None
-        
-        # Validation Rule 3: Detection confidence
         if confidence < self.min_face_confidence:
             return False, None
-        
-        # Validation Rule 4: Blur detection
+
         blur_score = self.compute_blur_score(frame, bbox)
         if blur_score > self.max_blur_score:
             return False, None
-        
-        # All validations passed - return face data
-        face_data = {
-            'face': face,
-            'embedding': embedding,
-            'bbox': bbox,
-            'confidence': confidence,
-            'face_size': face_size,
-            'blur_score': blur_score
+
+        return True, {
+            'face': face, 'embedding': embedding, 'bbox': bbox,
+            'confidence': confidence, 'face_size': face_size, 'blur_score': blur_score
         }
-        
-        return True, face_data
-    
-    def compute_blur_score(self, frame: np.ndarray, bbox: np.ndarray) -> float:
+
+    def compute_blur_score(self, frame, bbox):
         x1, y1, x2, y2 = bbox
         face_crop = frame[y1:y2, x1:x2]
-
         if face_crop.size == 0:
             return float('inf')
-
         gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
         return cv2.Laplacian(gray, cv2.CV_64F).var()
