@@ -8,6 +8,7 @@ from src.database.database import EmbeddingDatabase
 from src.enrollment.engine import EnrollmentEngine
 from src.enrollment.frame_validator import FrameValidator
 from src.enrollment.video_sampler import VideoFrameSampler
+from src.recognition.recognizer import Models
 import shutil
 
 
@@ -56,13 +57,15 @@ def run_sensitivity_analysis():
             database = EmbeddingDatabase(db_path)
             database.load()
             
-            enroller = EnrollmentEngine(duplicate_threshold=dup_thresh)
+            models = Models()
+            enroller = EnrollmentEngine(duplicate_threshold=dup_thresh, models=models)
             enroller.clear_log()
             
             validator = FrameValidator(
                 min_face_size=base_config['enrollment']['validation']['min_face_size'],
                 min_face_confidence=base_config['enrollment']['validation']['min_face_confidence'],
-                max_blur_score=blur_thresh
+                max_blur_score=blur_thresh,
+                models=models
             )
             
             # Statistics
@@ -127,7 +130,7 @@ def run_sensitivity_analysis():
                                 bbox = face.bbox.astype(int)
                                 face_size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
                                 confidence = getattr(face, 'det_score', 0.0)
-                                blur_score = validator._compute_blur_score(image, bbox)
+                                blur_score = validator.compute_blur_score(image, bbox)
                                 
                                 if face_size < validator.min_face_size:
                                     stats['rejected_size'] += 1

@@ -7,6 +7,7 @@ from src.database.database import EmbeddingDatabase
 from src.enrollment.engine import EnrollmentEngine
 from src.enrollment.frame_validator import FrameValidator
 from src.enrollment.video_sampler import VideoFrameSampler
+from src.recognition.recognizer import Models
 
 
 def analyze_enrollment_data():
@@ -34,11 +35,13 @@ def analyze_enrollment_data():
     database = EmbeddingDatabase(config['database']['embeddings_dir'])
     database.load()
     
-    enroller = EnrollmentEngine(duplicate_threshold=config['enrollment']['duplicate_threshold'])
+    models = Models()
+    enroller = EnrollmentEngine(duplicate_threshold=config['enrollment']['duplicate_threshold'], models=models)
     validator = FrameValidator(
         min_face_size=config['enrollment']['validation']['min_face_size'],
         min_face_confidence=config['enrollment']['validation']['min_face_confidence'],
-        max_blur_score=config['enrollment']['validation']['max_blur_score']
+        max_blur_score=config['enrollment']['validation']['max_blur_score'],
+        models=models
     )
     
     # Statistics collectors
@@ -87,7 +90,7 @@ def analyze_enrollment_data():
                 face_size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
                 
                 # Compute blur
-                blur_score = validator._compute_blur_score(image, bbox)
+                blur_score = validator.compute_blur_score(image, bbox)
                 
                 # Collect stats
                 blur_scores.append(blur_score)
@@ -131,7 +134,7 @@ def analyze_enrollment_data():
                     bbox = face.bbox.astype(int)
                     confidence = getattr(face, 'det_score', 0.0)
                     face_size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
-                    blur_score = validator._compute_blur_score(frame, bbox)
+                    blur_score = validator.compute_blur_score(frame, bbox)
                     
                     blur_scores.append(blur_score)
                     confidence_scores.append(confidence)

@@ -96,7 +96,7 @@ class FrameValidator:
             return False, None
         
         # Validation Rule 4: Blur detection
-        blur_score = self._compute_blur_score(frame, bbox)
+        blur_score = self.compute_blur_score(frame, bbox)
         if blur_score > self.max_blur_score:
             return False, None
         
@@ -112,58 +112,12 @@ class FrameValidator:
         
         return True, face_data
     
-    def _compute_blur_score(self, frame: np.ndarray, bbox: np.ndarray) -> float:
-        """
-        Compute blur score using Variance of Laplacian.
-        
-        Computed on cropped face region, not entire frame.
-        Lower score = sharper image
-        Higher score = more blurry
-        
-        Args:
-            frame: Full frame (BGR)
-            bbox: Face bounding box [x1, y1, x2, y2]
-        
-        Returns:
-            Blur score (variance of Laplacian)
-        """
-        # Crop face region
+    def compute_blur_score(self, frame: np.ndarray, bbox: np.ndarray) -> float:
         x1, y1, x2, y2 = bbox
         face_crop = frame[y1:y2, x1:x2]
-        
+
         if face_crop.size == 0:
-            return float('inf')  # Invalid crop
-        
-        # Convert to grayscale
+            return float('inf')
+
         gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
-        
-        # Compute Laplacian variance
-        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
-        
-        return blur_score
-    
-    def has_face(self, frame: np.ndarray) -> bool:
-        """
-        Quick check if frame contains at least one face.
-        
-        Args:
-            frame: BGR frame
-        
-        Returns:
-            True if face detected, False otherwise
-        """
-        faces = self.models.detect_and_recognize(frame)
-        return len(faces) > 0
-    
-    def get_face_count(self, frame: np.ndarray) -> int:
-        """
-        Count number of faces in frame.
-        
-        Args:
-            frame: BGR frame
-        
-        Returns:
-            Number of faces detected
-        """
-        faces = self.models.detect_and_recognize(frame)
-        return len(faces)
+        return cv2.Laplacian(gray, cv2.CV_64F).var()
