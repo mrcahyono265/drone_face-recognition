@@ -37,8 +37,7 @@ from src.recognition.recognizer import Models
 from src.dataset.utils import (
     get_all_identities,
     get_enrollment_videos_path,
-    scan_videos,
-    ensure_directory_exists
+    scan_files,
 )
 from src.utils import load_config, initialize_csv_report, append_to_csv_report, validate_embeddings
 
@@ -282,10 +281,7 @@ def main():
     min_face_confidence = validation_config.get("min_face_confidence", 0.7)
     max_blur_score = validation_config.get("max_blur_score", 650)
     
-    # Ensure database directory exists
-    if not ensure_directory_exists(embeddings_dir):
-        print("[ERROR] Failed to create database directory")
-        return
+    os.makedirs(embeddings_dir, exist_ok=True)
     
     # Get all identities
     identities = get_all_identities(dataset_root)
@@ -355,7 +351,7 @@ def main():
         videos_dir = get_enrollment_videos_path(dataset_root, identity, enrollment_videos_subdir)
         
         # Scan for videos
-        video_files = scan_videos(videos_dir, supported_formats)
+        video_files = scan_files(videos_dir, supported_formats)
         
         if len(video_files) == 0:
             print(f"  [SKIP] No videos found in {videos_dir}")

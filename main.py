@@ -2,7 +2,6 @@ import sys
 import cv2
 import time
 import pickle
-import yaml
 import signal
 import numpy as np
 from datetime import datetime
@@ -10,19 +9,14 @@ from src.recognition.recognizer import Models
 from src.ui.display import UI
 from src.spoof.antispoof import MiniFASNetV2
 from src.database.database import EmbeddingDatabase
-from src.utils import _setup_cuda_paths
+from src.utils import _setup_cuda_paths, load_config
+
+
+EMA_ALPHA = 0.3
 
 
 def _load_config():
-    try:
-        with open("config.yaml", "r") as f:
-            config = yaml.safe_load(f)
-    except FileNotFoundError:
-        print("[ERROR] config.yaml not found.")
-        exit(1)
-    except yaml.YAMLError as e:
-        print(f"[ERROR] Invalid YAML in config.yaml: {e}")
-        exit(1)
+    config = load_config()
 
     required_sections = ["camera", "recognition", "spoofing", "processing", "database"]
     for section in required_sections:
@@ -205,8 +199,7 @@ def main():
 
                 is_real, raw_liveness_score = liveness.check_liveness(frame, bbox)
 
-                ema_alpha = 0.3
-                ema_liveness_score = (ema_alpha * raw_liveness_score) + ((1 - ema_alpha) * ema_liveness_score)
+                ema_liveness_score = (EMA_ALPHA * raw_liveness_score) + ((1 - EMA_ALPHA) * ema_liveness_score)
                 liveness_label = "Real" if is_real else "Spoof"
                 color = (0, 255, 0) if is_real else (0, 0, 255)
                 if not is_real:

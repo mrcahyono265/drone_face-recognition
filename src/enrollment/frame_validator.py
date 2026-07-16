@@ -26,32 +26,14 @@ class FrameValidator:
     """
     
     def __init__(self, 
-                 min_face_size: int = 80,
-                 min_face_confidence: float = 0.7,
-                 max_blur_score: float = 100.0,
+                 min_face_size=80,
+                 min_face_confidence=0.7,
+                 max_blur_score=100.0,
                  models=None):
         self.min_face_size = min_face_size
         self.min_face_confidence = min_face_confidence
         self.max_blur_score = max_blur_score
         self.models = models if models is not None else Models()
-    
-    def validate(self, frame: np.ndarray) -> Tuple[bool, str]:
-        """
-        Validate a frame for enrollment (convenience wrapper).
-        
-        Performs face detection internally. For better performance,
-        use validate_with_faces() with pre-detected faces.
-        
-        Args:
-            frame: BGR frame (numpy array)
-        
-        Returns:
-            (is_valid, reason)
-                is_valid: True if frame is suitable for enrollment
-                reason: Description of validation result
-        """
-        faces = self.models.detect_and_recognize(frame)
-        return self.validate_with_faces(faces, frame)
     
     def validate_with_faces(self, 
                            faces: List[Any], 

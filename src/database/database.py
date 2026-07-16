@@ -96,17 +96,11 @@ class EmbeddingDatabase:
         existing = glob(os.path.join(person_dir, "emb_*.npy"))
         next_id = len(existing) + 1
         
-        # L2 normalize embedding before saving
-        embedding_norm = embedding / np.linalg.norm(embedding)
-        
-        # Save embedding
         emb_path = os.path.join(person_dir, f"emb_{next_id:04d}.npy")
-        np.save(emb_path, embedding_norm)
-        
-        # Update in-memory cache
+        np.save(emb_path, embedding)
         if person_name not in self.embeddings:
             self.embeddings[person_name] = []
-        self.embeddings[person_name].append(embedding_norm)
+        self.embeddings[person_name].append(embedding)
         
         print(f"[INFO] Added embedding for {person_name}: {emb_path}")
         return emb_path

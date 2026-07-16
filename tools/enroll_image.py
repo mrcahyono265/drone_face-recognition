@@ -30,8 +30,7 @@ from src.enrollment.engine import EnrollmentEngine
 from src.dataset.utils import (
     get_all_identities,
     get_enrollment_images_path,
-    scan_images,
-    ensure_directory_exists
+    scan_files,
 )
 from src.utils import load_config, initialize_csv_report, append_to_csv_report, validate_embeddings
 
@@ -179,10 +178,7 @@ def main():
     duplicate_threshold = config["enrollment"]["duplicate_threshold"]
     verbose = config["logging"].get("verbose", False)
     
-    # Ensure database directory exists
-    if not ensure_directory_exists(embeddings_dir):
-        print("[ERROR] Failed to create database directory")
-        return
+    os.makedirs(embeddings_dir, exist_ok=True)
     
     # Get all identities
     identities = get_all_identities(dataset_root)
@@ -234,7 +230,7 @@ def main():
         images_dir = get_enrollment_images_path(dataset_root, identity, enrollment_images_subdir)
         
         # Scan for images
-        image_files = scan_images(images_dir, supported_formats)
+        image_files = scan_files(images_dir, supported_formats)
         
         if len(image_files) == 0:
             print(f"  [SKIP] No images found in {images_dir}")
