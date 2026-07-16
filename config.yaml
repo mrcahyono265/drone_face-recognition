@@ -1,5 +1,5 @@
 camera:
-  source: 1
+  source: 0
   type: "webcam"
   rtsp_url: "rtsp://192.168.1.1:7070/webcam"
 
@@ -20,17 +20,18 @@ spoofing:
   liveness_threshold: 0.85
 
 processing:
+  provider: "cpu"
   frame_skip: 4
   fps_smoothing: 0.9
 
 database:
   mode: "multiple"
   embeddings_dir: "database/embeddings"
+  path: "database/face_db.pkl"
 
 enrollment:
   duplicate_threshold: 0.995
   sampling_interval_ms: 300
-
   validation:
     min_face_size: 80
     min_face_confidence: 0.7

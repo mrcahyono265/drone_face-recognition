@@ -19,8 +19,6 @@ Output:
 import cv2
 import os
 import sys
-import yaml
-import csv
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -35,43 +33,17 @@ from src.dataset.utils import (
     scan_images,
     ensure_directory_exists
 )
+from src.utils import load_config, initialize_csv_report, append_to_csv_report, validate_embeddings
 
 
-def load_config() -> Dict[str, Any]:
-    """Load configuration from config.yaml"""
-    try:
-        with open("config.yaml", "r") as f:
-            config = yaml.safe_load(f)
-        return config
-    except FileNotFoundError:
-        print("[ERROR] config.yaml not found")
-        sys.exit(1)
-    except yaml.YAMLError as e:
-        print(f"[ERROR] Invalid YAML: {e}")
-        sys.exit(1)
-
-
-def initialize_csv_report(report_path: str) -> None:
-    """Initialize CSV report file with headers"""
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    
-    with open(report_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            'timestamp',
-            'identity',
-            'source_file',
-            'status',
-            'similarity',
-            'embedding_file'
-        ])
-
-
-def append_to_csv_report(report_path: str, row: List) -> None:
-    """Append a row to CSV report"""
-    with open(report_path, 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(row)
+IMAGE_REPORT_HEADERS = [
+    'timestamp',
+    'identity',
+    'source_file',
+    'status',
+    'similarity',
+    'embedding_file'
+]
 
 
 def process_identity(
@@ -192,68 +164,6 @@ def print_identity_summary(identity: str, stats: Dict[str, Any], database: Embed
     print("")
 
 
-def validate_embeddings(database: EmbeddingDatabase, identities: List[str]) -> Dict[str, List[str]]:
-    """
-    Validate all embeddings in database.
-    
-    Checks:
-    - Dimension = 512
-    - L2-normalized (norm ≈ 1.0)
-    
-    Returns:
-        Dictionary with validation warnings
-    """
-    warnings = {
-        'invalid_dimension': [],
-        'not_normalized': []
-    }
-    
-    print("Validating embeddings...")
-    
-    for identity in identities:
-        emb_dir = os.path.join(database.db_root, identity)
-        if not os.path.exists(emb_dir):
-            continue
-        
-        for filename in os.listdir(emb_dir):
-            if not filename.endswith('.npy'):
-                continue
-            
-            emb_path = os.path.join(emb_dir, filename)
-            try:
-                embedding = __import__('numpy').load(emb_path)
-                
-                # Check dimension
-                if embedding.shape != (512,):
-                    warnings['invalid_dimension'].append(f"{identity}/{filename}: shape={embedding.shape}")
-                
-                # Check L2 normalization
-                norm = __import__('numpy').linalg.norm(embedding)
-                if abs(norm - 1.0) > 1e-6:
-                    warnings['not_normalized'].append(f"{identity}/{filename}: norm={norm:.6f}")
-                    
-            except Exception as e:
-                print(f"[WARNING] Failed to validate {emb_path}: {e}")
-    
-    # Print warnings
-    if warnings['invalid_dimension']:
-        print("")
-        print("[WARNING] Invalid dimension embeddings:")
-        for w in warnings['invalid_dimension']:
-            print(f"  - {w}")
-    
-    if warnings['not_normalized']:
-        print("")
-        print("[WARNING] Embeddings not L2-normalized:")
-        for w in warnings['not_normalized']:
-            print(f"  - {w}")
-    
-    if not warnings['invalid_dimension'] and not warnings['not_normalized']:
-        print("  All embeddings valid [OK]")
-    
-    return warnings
-
-
 def main():
     print("=== Automated Image Enrollment Pipeline ===")
     print("")
@@ -303,7 +213,7 @@ def main():
         config["reports"]["enrollment_dir"],
         f"image_report_{timestamp}.csv"
     )
-    initialize_csv_report(report_path)
+    initialize_csv_report(report_path, IMAGE_REPORT_HEADERS)
     
     # Store overall statistics
     overall_stats = {

@@ -157,10 +157,7 @@ Multiple embedding mode is considered **superior** if:
 ### Step 1: Populate Databases
 
 ```bash
-# Legacy database (if not already done)
-python build_embedding_database.py
-
-# Multiple embedding database
+# Multiple embedding database (recommended)
 python tools/enroll_image.py
 python tools/enroll_video.py
 ```

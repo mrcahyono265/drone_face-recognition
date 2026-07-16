@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drone-e99-face-recognition"
+version = "2.0.0"
+requires-python = ">=3.11"
+authors = [
+    { name = "mrcahyono265", email = "mohammadridhocahyono265@gmail.com" },
+]
+description = "Real-time face recognition and anti-spoofing system for drone and webcam"
+readme = "README.md"
+license = { text = "MIT" }
+keywords = ["face-recognition", "anti-spoofing", "computer-vision", "drone"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "opencv-python>=4.9.0",
+    "numpy>=1.26,<2.0",
+    "insightface>=0.7.3",
+    "onnxruntime-gpu>=1.27.0",
+    "nvidia-cublas",
+    "nvidia-cuda-runtime",
+    "nvidia-cudnn-cu13",
+    "nvidia-cufft",
+    "nvidia-nvjitlink",
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+# TODO: Ganti URL dengan repo GitHub kamu
+Homepage = "https://github.com/your-username/drone_e99_face_recognition"
+
+[project.scripts]
+drone-face-rec = "main:main"
+drone-enroll-image = "tools.enroll_image:main"
+drone-enroll-video = "tools.enroll_video:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["src.*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.onnx"]

@@ -3,10 +3,12 @@ import numpy as np
 import onnxruntime as ort
 
 class MiniFASNetV2:
-    def __init__ (self, model_path="models/MiniFASNetV2.onnx"):
+    def __init__ (self, model_path="models/MiniFASNetV2.onnx", provider="cuda", liveness_threshold=0.85):
         print("[INFO]: Loading MiniFASNetV2 model...")
+        self.liveness_threshold = liveness_threshold
         try:
-            self.session = ort.InferenceSession(model_path, providers=['CUDAExecutionProvider'])
+            ort_providers = ['CUDAExecutionProvider'] if provider == "cuda" else ['CPUExecutionProvider']
+            self.session = ort.InferenceSession(model_path, providers=ort_providers)
             print("[INFO]: MiniFASNetV2 model loaded successfully.")
 
         except Exception as e:
@@ -42,6 +44,6 @@ class MiniFASNetV2:
         probs = e_x / e_x.sum()
 
         real_score = float(probs[1]) 
-        is_real = real_score > 0.85 
+        is_real = real_score > self.liveness_threshold
 
         return is_real, real_score
