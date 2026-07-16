@@ -39,8 +39,7 @@ dependencies = [
 ]
 
 [project.urls]
-# TODO: Ganti URL dengan repo GitHub kamu
-Homepage = "https://github.com/your-username/drone_e99_face_recognition"
+Homepage = "https://github.com/mrcahyono265/drone_e99_face_recognition"
 
 [project.scripts]
 drone-face-rec = "main:main"
