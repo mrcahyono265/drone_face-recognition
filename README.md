@@ -86,6 +86,7 @@ Edit `config.yaml`:
 | `camera.rtsp_url` | — | RTSP URL for drone |
 | `processing.provider` | `cpu` | `cuda` or `cpu` |
 | `processing.frame_skip` | `4` | Process every Nth frame |
+| `processing.headless` | `false` | `true` to run without display (e.g. drone) |
 | `recognition.similarity_threshold` | `0.45` | Match threshold |
 | `spoofing.liveness_threshold` | `0.85` | Liveness score cutoff |
 | `database.mode` | `multiple` | `multiple` or `legacy` |

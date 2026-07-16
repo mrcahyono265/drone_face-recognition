@@ -1,6 +1,6 @@
 camera:
   source: 0
-  type: "webcam"
+  type: "drone"
   rtsp_url: "rtsp://192.168.1.1:7070/webcam"
 
 dataset:
@@ -23,6 +23,7 @@ processing:
   provider: "cpu"
   frame_skip: 4
   fps_smoothing: 0.9
+  headless: false
 
 database:
   mode: "multiple"

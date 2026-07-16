@@ -97,6 +97,7 @@ def main():
     SIMILARITY_THRESHOLD = config["recognition"]["similarity_threshold"]
     frame_skip_rate = config["processing"]["frame_skip"]
     fps_smoothing = config["processing"]["fps_smoothing"]
+    headless = config.get("processing", {}).get("headless", False)
 
     total_recognitions = 0
     accepted_recognitions = 0
@@ -112,7 +113,8 @@ def main():
 
     print("[INFO] Running...")
     app_instance = UI()
-    cv2.namedWindow("Drone E99 Face Recognition and Anti Spoofing")
+    if not headless:
+        cv2.namedWindow("Drone E99 Face Recognition and Anti Spoofing")
 
     while True:
         frame_start = time.time()
@@ -181,8 +183,6 @@ def main():
         cv2.putText(frame, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), (10, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
         frame = app_instance.process_ui(frame)
-        cv2.imshow("Drone E99 Face Recognition and Anti Spoofing", frame)
-        key = cv2.waitKey(1) & 0xFF
 
         ui_time = time.time() - ui_start
 
@@ -197,12 +197,17 @@ def main():
         cv2.putText(frame, f"FPS: {int(effective_fps)}", (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-        if key == ord('q'):
-            break
-        elif key == ord('s'):
-            app_instance.take_snapshot(frame)
-        elif key == ord('r'):
-            app_instance.toggle_recording()
+        if not headless:
+            cv2.imshow("Drone E99 Face Recognition and Anti Spoofing", frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            elif key == ord('s'):
+                app_instance.take_snapshot(frame)
+            elif key == ord('r'):
+                app_instance.toggle_recording()
+        else:
+            time.sleep(0.001)
 
     print_summary(detection_times, total_pipeline_times,
                   total_recognitions, accepted_recognitions,
@@ -210,7 +215,8 @@ def main():
 
     camera.stop()
     app_instance.cleanup()
-    cv2.destroyAllWindows()
+    if not headless:
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
