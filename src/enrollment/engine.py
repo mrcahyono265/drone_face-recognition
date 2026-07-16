@@ -19,16 +19,9 @@ class EnrollmentEngine:
     Both image and video enrollment use the same embedding generation process.
     """
     
-    def __init__(self, duplicate_threshold: float = 0.995):
-        """
-        Initialize enrollment engine.
-        
-        Args:
-            duplicate_threshold: Cosine similarity threshold for duplicate detection.
-                                If similarity > threshold, skip embedding.
-        """
+    def __init__(self, duplicate_threshold: float = 0.995, models=None):
         self.duplicate_threshold = duplicate_threshold
-        self.models = Models()
+        self.models = models if models is not None else Models()
         self.enrollment_log: List[Dict[str, Any]] = []
     
     def enroll_image(self, 

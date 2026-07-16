@@ -1,7 +1,9 @@
+import sys
 import cv2
 import time
 import pickle
 import yaml
+import signal
 import numpy as np
 from datetime import datetime
 from src.recognition.recognizer import Models
@@ -14,13 +16,34 @@ from src.utils import _setup_cuda_paths
 def _load_config():
     try:
         with open("config.yaml", "r") as f:
-            return yaml.safe_load(f)
+            config = yaml.safe_load(f)
     except FileNotFoundError:
-        print("[ERROR] config.yaml not found. Please create configuration file.")
+        print("[ERROR] config.yaml not found.")
         exit(1)
     except yaml.YAMLError as e:
         print(f"[ERROR] Invalid YAML in config.yaml: {e}")
         exit(1)
+
+    required_sections = ["camera", "recognition", "spoofing", "processing", "database"]
+    for section in required_sections:
+        if section not in config:
+            print(f"[ERROR] Missing config section: '{section}'")
+            exit(1)
+
+    if config["camera"]["type"] == "webcam" and not isinstance(config["camera"].get("source"), int):
+        print("[ERROR] config: camera.source must be an integer for webcam type")
+        exit(1)
+    if config["camera"]["type"] == "drone" and not isinstance(config["camera"].get("rtsp_url"), str):
+        print("[ERROR] config: camera.rtsp_url must be a string for drone type")
+        exit(1)
+    if not isinstance(config["recognition"].get("similarity_threshold"), (int, float)):
+        print("[ERROR] config: recognition.similarity_threshold must be a number")
+        exit(1)
+    if not isinstance(config["processing"].get("frame_skip"), int):
+        print("[ERROR] config: processing.frame_skip must be an integer")
+        exit(1)
+
+    return config
 
 
 def init_components(config):
@@ -90,7 +113,24 @@ def print_summary(detection_times, total_pipeline_times,
     print('')
 
 
+_cleanup_components = None
+
+
+def _signal_handler(sig, frame):
+    print("\n[INFO] Shutdown requested...")
+    if _cleanup_components:
+        camera, app_instance, headless = _cleanup_components
+        if not headless:
+            cv2.destroyAllWindows()
+        app_instance.cleanup()
+        camera.stop()
+    sys.exit(0)
+
+
 def main():
+    global _cleanup_components
+    signal.signal(signal.SIGINT, _signal_handler)
+
     config = _load_config()
     camera, models, liveness, embeddings_db, face_db, database_mode = init_components(config)
 
@@ -113,6 +153,7 @@ def main():
 
     print("[INFO] Running...")
     app_instance = UI()
+    _cleanup_components = (camera, app_instance, headless)
     if not headless:
         cv2.namedWindow("Drone E99 Face Recognition and Anti Spoofing")
 

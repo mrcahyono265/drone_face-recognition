@@ -33,6 +33,7 @@ from src.database.database import EmbeddingDatabase
 from src.enrollment.engine import EnrollmentEngine
 from src.enrollment.video_sampler import VideoFrameSampler
 from src.enrollment.frame_validator import FrameValidator
+from src.recognition.recognizer import Models
 from src.dataset.utils import (
     get_all_identities,
     get_enrollment_videos_path,
@@ -124,7 +125,6 @@ def process_video(
                     timestamp, identity, video_filename, frame_index,
                     'no_face', '', '', '', '', reason
                 ])
-                stats['total_frames'] += 1
                 continue
             
             # Rule 2: Multiple faces
@@ -135,7 +135,6 @@ def process_video(
                     timestamp, identity, video_filename, frame_index,
                     'multiple_faces', '', '', '', '', reason
                 ])
-                stats['total_frames'] += 1
                 continue
             
             # Now validate the single face
@@ -174,12 +173,10 @@ def process_video(
                             'failed', '', '', '', '', reason
                         ])
                 
-                stats['total_frames'] += 1
                 continue
             
             # Frame is valid, enroll it
             stats['valid_frames'] += 1
-            stats['total_frames'] += 1
             
             success, message, similarity = enroller.enroll_with_face(
                 face_data,
@@ -310,17 +307,21 @@ def main():
     database = EmbeddingDatabase(embeddings_dir)
     database.load()
     
+    # Initialize face recognition model (shared)
+    models = Models()
+    
     # Initialize enrollment engine
-    enroller = EnrollmentEngine(duplicate_threshold=duplicate_threshold)
+    enroller = EnrollmentEngine(duplicate_threshold=duplicate_threshold, models=models)
     
     # Initialize video sampler
     sampler = VideoFrameSampler(sampling_interval_ms=sampling_interval_ms)
     
-    # Initialize frame validator
+    # Initialize frame validator (shared model)
     validator = FrameValidator(
         min_face_size=min_face_size,
         min_face_confidence=min_face_confidence,
-        max_blur_score=max_blur_score
+        max_blur_score=max_blur_score,
+        models=models
     )
     
     # Initialize CSV report

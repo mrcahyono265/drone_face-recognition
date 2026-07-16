@@ -23,7 +23,3 @@ class Models:
         # Detect faces
         faces = self.face_app.get(rgb_frame)
         return faces
-    
-    def compute_sim(self, feat1, feat2):
-        # Using cosine similarity
-        return np.dot(feat1, feat2)

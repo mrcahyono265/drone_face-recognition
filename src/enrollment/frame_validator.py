@@ -28,20 +28,12 @@ class FrameValidator:
     def __init__(self, 
                  min_face_size: int = 80,
                  min_face_confidence: float = 0.7,
-                 max_blur_score: float = 100.0):
-        """
-        Initialize frame validator.
-        
-        Args:
-            min_face_size: Minimum face width/height in pixels
-            min_face_confidence: Minimum detection confidence (0.0 - 1.0)
-            max_blur_score: Maximum blur score (Variance of Laplacian)
-                           Lower = sharper, Higher = more blurry
-        """
+                 max_blur_score: float = 100.0,
+                 models=None):
         self.min_face_size = min_face_size
         self.min_face_confidence = min_face_confidence
         self.max_blur_score = max_blur_score
-        self.models = Models()
+        self.models = models if models is not None else Models()
     
     def validate(self, frame: np.ndarray) -> Tuple[bool, str]:
         """
