@@ -186,13 +186,13 @@ def main():
 
         ui_time = time.time() - ui_start
 
-        pipeline_time = time.time() - frame_start if frame_count % (frame_skip_rate + 1) == 0 else ui_time
-        total_pipeline_times.append(pipeline_time)
+        if frame_count % (frame_skip_rate + 1) == 0:
+            total_pipeline_times.append(time.time() - frame_start)
 
         if total_pipeline_times:
             avg = sum(total_pipeline_times) / len(total_pipeline_times)
             if avg > 0:
-                effective_fps = (fps_smoothing * effective_fps) + ((1 - fps_smoothing) * (1000.0 / avg))
+                effective_fps = (fps_smoothing * effective_fps) + ((1 - fps_smoothing) * (1.0 / avg))
 
         cv2.putText(frame, f"FPS: {int(effective_fps)}", (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
