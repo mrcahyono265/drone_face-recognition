@@ -1,9 +1,15 @@
 # Drone E99 — Face Recognition & Anti-Spoofing
 
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Real-time face recognition + liveness detection for drone (RTSP) and webcam. Built for undergraduate thesis research.
+
+## CUDA Requirements
+
+GPU acceleration uses `onnxruntime-gpu>=1.27.0` with **CUDA 13** native packages (`nvidia-cudnn-cu13`, etc.). Supported GPUs: NVIDIA RTX 2000 series+, driver ≥ 610.
+
+> **CUDA 11/12?** Edit `pyproject.toml` and change `cu13` packages to `cu11`/`cu12`, or switch to CPU: install `onnxruntime` instead of `onnxruntime-gpu` and set `config.yaml` → `processing.provider: cpu`.
 
 ## Quick Start
 

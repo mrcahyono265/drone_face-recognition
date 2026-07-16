@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mrcahyono265/drone_e99_face_recognition"
+Homepage = "https://github.com/mrcahyono265/drone_face-recognition"
 
 [project.scripts]
 drone-face-rec = "main:main"
