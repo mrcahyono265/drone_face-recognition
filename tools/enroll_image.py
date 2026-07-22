@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.database.database import EmbeddingDatabase
 from src.enrollment.engine import EnrollmentEngine
+from src.recognition.recognizer import Models
 from src.dataset.utils import (
     get_all_identities,
     get_enrollment_images_path,
@@ -199,9 +200,16 @@ def main():
     # Initialize database
     database = EmbeddingDatabase(embeddings_dir)
     database.load()
-    
+
+    # Initialize face recognition model
+    models = Models(
+        provider=config.get("processing", {}).get("provider", "cuda"),
+        model_name=config["recognition"]["model_name"],
+        det_size=tuple(config["recognition"]["det_size"])
+    )
+
     # Initialize enrollment engine
-    enroller = EnrollmentEngine(duplicate_threshold=duplicate_threshold)
+    enroller = EnrollmentEngine(duplicate_threshold=duplicate_threshold, models=models)
     
     # Initialize CSV report
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

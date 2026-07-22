@@ -1,8 +1,10 @@
 import sys
+import os
 import cv2
 import time
 import pickle
 import signal
+import csv
 import numpy as np
 from datetime import datetime
 from src.recognition.recognizer import Models
@@ -27,10 +29,13 @@ def _load_config():
     if config["camera"]["type"] == "drone" and not isinstance(config["camera"].get("rtsp_url"), str):
         print("[ERROR] config: camera.rtsp_url must be a string for drone type")
         exit(1)
+    if config["camera"]["type"] == "video" and not isinstance(config["camera"].get("video_dir"), str):
+        print("[ERROR] config: camera.video_dir must be a string for video type")
+        exit(1)
     if not isinstance(config["recognition"].get("similarity_threshold"), (int, float)):
         print("[ERROR] config: recognition.similarity_threshold must be a number")
         exit(1)
-    if not isinstance(config["processing"].get("frame_skip"), int):
+    if type(config["processing"].get("frame_skip")) is not int:
         print("[ERROR] config: processing.frame_skip must be an integer")
         exit(1)
 
@@ -45,6 +50,9 @@ def init_components(config):
     if config["camera"]["type"] == "webcam":
         from src.camera.webcam_camera import WebcamStream
         camera = WebcamStream(config["camera"]["source"]).start()
+    elif config["camera"]["type"] == "video":
+        from src.camera.video_camera import VideoStream
+        camera = VideoStream(config["camera"]["video_dir"]).start()
     else:
         from src.camera.rtsp_camera import RTSPStream
         camera = RTSPStream(config["camera"]["rtsp_url"]).start()
@@ -84,11 +92,13 @@ _cleanup_components = None
 def _signal_handler(sig, frame):
     print("\n[INFO] Shutdown requested...")
     if _cleanup_components:
-        camera, app_instance, headless = _cleanup_components
+        camera, app_instance, headless, debug_file = _cleanup_components
         if not headless:
             cv2.destroyAllWindows()
         app_instance.cleanup()
         camera.stop()
+        if debug_file:
+            debug_file.close()
     sys.exit(0)
 
 
@@ -103,33 +113,55 @@ def main():
     frame_skip_rate = config["processing"]["frame_skip"]
     fps_smoothing = config["processing"]["fps_smoothing"]
     headless = config.get("processing", {}).get("headless", False)
+    camera_type = config["camera"]["type"]
+    output_dir = config.get("output", {}).get("video_dir", "inference_output")
 
-    detection_times = []
-    total_pipeline_times = []
+    debug_enabled = config.get("debug", {}).get("csv_enabled", False)
+    debug_file = None
+    debug_writer = None
+    if debug_enabled:
+        debug_path = config.get("debug", {}).get("csv_path", "reports/debug_latest.csv")
+        os.makedirs("reports", exist_ok=True)
+        debug_file = open(debug_path, "w", newline="")
+        debug_writer = csv.writer(debug_file)
+        debug_writer.writerow(["timestamp", "identity", "similarity",
+                               "bbox_x1", "bbox_y1", "bbox_x2", "bbox_y2",
+                               "liveness_score", "liveness_label"])
+
+    detection_sum = 0.0
+    detection_count = 0
+    pipeline_sum = 0.0
+    pipeline_count = 0
 
     frame_count = 0
     effective_fps = 0.0
     last_detected_faces = []
     identity_stats = {}
+    is_video_mode = camera_type == "video"
+    prev_video_name = None
 
     print("[INFO] Running...")
-    app_instance = UI()
-    _cleanup_components = (camera, app_instance, headless)
+    app_instance = UI(output_dir=output_dir, source_prefix=camera_type)
+    _cleanup_components = (camera, app_instance, headless, debug_file)
     if not headless:
         cv2.namedWindow("Drone E99 Face Recognition and Anti Spoofing")
 
     while True:
-        frame_start = time.time()
+        t0 = time.time()
         frame = camera.read()
+
         if frame is None:
+            if is_video_mode and getattr(camera, 'exhausted', False):
+                break
             continue
 
         frame_count += 1
+        now = datetime.now()
 
         if frame_count % (frame_skip_rate + 1) == 0:
-            t = time.time()
             faces = models.detect_and_recognize(frame)
-            detection_times.append(time.time() - t)
+            detection_sum += time.time() - t0
+            detection_count += 1
 
             last_detected_faces = []
 
@@ -170,30 +202,44 @@ def main():
                 liveness_label = "Real" if is_real else "Spoof"
                 color = (0, 255, 0) if is_real else (0, 0, 255)
 
+                if debug_writer:
+                    debug_writer.writerow([now.isoformat(), identity, f"{max_sim:.3f}",
+                                           bbox[0], bbox[1], bbox[2], bbox[3],
+                                           f"{raw_liveness_score:.3f}", liveness_label])
+
                 last_detected_faces.append((bbox, display_name, liveness_label,
                                             max_sim, raw_liveness_score, id_color, color))
 
-            if last_detected_faces:
-                parts = [f"[{n} {s:.2f} ({l} {r:.2f})]" for _, n, l, s, r, _, _ in last_detected_faces]
-                print(" ".join(parts))
-
-        ui_start = time.time()
         for bbox, display_name, liveness_label, _, raw_score, id_color, color in last_detected_faces:
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), id_color, 2)
             cv2.putText(frame, display_name, (bbox[0], bbox[1] - 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, id_color, 2)
             cv2.putText(frame, f"{liveness_label} ({raw_score:.2f})", (bbox[0], bbox[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-        cv2.putText(frame, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), (10, 20),
+        cv2.putText(frame, now.strftime("%Y-%m-%d %H:%M:%S"), (10, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+
+        # Auto-record for video mode: detect video file change (BEFORE process_ui)
+        if is_video_mode:
+            current_video_name = getattr(camera, 'current_video_name', None)
+            if current_video_name != prev_video_name:
+                if app_instance.is_recording:
+                    app_instance.stop_recording()
+                video_name_noext = os.path.splitext(current_video_name)[0]
+                ts = now.strftime("%Y%m%d_%H%M%S")
+                record_filename = os.path.join(output_dir, f"video_{video_name_noext}_{ts}.avi")
+                h, w = frame.shape[:2]
+                app_instance.frame_h, app_instance.frame_w = h, w
+                app_instance.start_recording(record_filename)
+                prev_video_name = current_video_name
+
         frame = app_instance.process_ui(frame)
 
-        ui_time = time.time() - ui_start
+        pipeline_dt = time.time() - t0
+        pipeline_sum += pipeline_dt
+        pipeline_count += 1
 
-        if frame_count % (frame_skip_rate + 1) == 0:
-            total_pipeline_times.append(time.time() - frame_start)
-
-        if total_pipeline_times:
-            avg = sum(total_pipeline_times) / len(total_pipeline_times)
+        if pipeline_count > 0:
+            avg = pipeline_sum / pipeline_count
             if avg > 0:
                 effective_fps = (fps_smoothing * effective_fps) + ((1 - fps_smoothing) * (1.0 / avg))
 
@@ -210,20 +256,27 @@ def main():
             elif key == ord('r'):
                 app_instance.toggle_recording()
         else:
-            time.sleep(0.001)
+            time.sleep(0.01)
+
+    # Stop recording if still active (video mode auto-record)
+    if app_instance.is_recording:
+        app_instance.stop_recording()
 
     print('')
     print('=' * 50)
     print('SUMMARY')
     print('=' * 50)
 
-    if total_pipeline_times:
-        avg_ms = sum(total_pipeline_times) / len(total_pipeline_times) * 1000
+    prov = config.get("processing", {}).get("provider", "cuda")
+    print(f'  Provider:               {prov}')
+
+    if pipeline_count > 0:
+        avg_ms = pipeline_sum / pipeline_count * 1000
         fps = 1000.0 / avg_ms if avg_ms > 0 else 0
         print(f'  FPS:                    {fps:.1f}')
 
-    if detection_times:
-        avg_det = sum(detection_times) / len(detection_times) * 1000
+    if detection_count > 0:
+        avg_det = detection_sum / detection_count * 1000
         print(f'  Detection Latency:      {avg_det:.1f} ms')
 
     if identity_stats:
@@ -236,6 +289,8 @@ def main():
     print('')
 
     camera.stop()
+    if debug_file:
+        debug_file.close()
     app_instance.cleanup()
     if not headless:
         cv2.destroyAllWindows()

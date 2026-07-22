@@ -44,8 +44,7 @@ reports/
 *.csv
 
 # Dataset: ignore large videos, keep example images
-dataset/**/*.mp4
-dataset/**/*.avi
+dataset/
 
 # Temporary files
 *.tmp
@@ -69,3 +68,5 @@ htmlcov/
 # Root generated/temp files
 *.bak
 *.backup.py
+
+notes.txt

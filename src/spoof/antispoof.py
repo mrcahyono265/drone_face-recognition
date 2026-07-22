@@ -1,14 +1,17 @@
 import cv2
 import numpy as np
 import onnxruntime as ort
+from collections import deque
 
 class MiniFASNetV2:
     def __init__ (self, model_path="models/MiniFASNetV2.onnx", provider="cuda", liveness_threshold=0.85):
         print("[INFO]: Loading MiniFASNetV2 model...")
         self.liveness_threshold = liveness_threshold
+        self.score_history = deque(maxlen=30)
         try:
             ort_providers = ['CUDAExecutionProvider'] if provider == "cuda" else ['CPUExecutionProvider']
             self.session = ort.InferenceSession(model_path, providers=ort_providers)
+            self._input_name = self.session.get_inputs()[0].name
             print("[INFO]: MiniFASNetV2 model loaded successfully.")
 
         except Exception as e:
@@ -20,7 +23,10 @@ class MiniFASNetV2:
         x1, y1, x2, y2 = bbox
         box_w, box_h = x2 - x1, y2 - y1
         
-        scale = min((src_h - 1) / box_h, (src_w - 1) / box_w, 2.7)
+        # dynamic scale: more context for mid-range faces (15-35% frame height)
+        face_ratio = box_h / src_h
+        base_scale = 3.5 if 0.15 < face_ratio < 0.35 else 2.7
+        scale = min((src_h - 1) / box_h, (src_w - 1) / box_w, base_scale)
         new_w, new_h = box_w * scale, box_h * scale
         center_x, center_y = x1 + box_w / 2, y1 + box_h / 2
 
@@ -37,13 +43,16 @@ class MiniFASNetV2:
         face_tensor = np.expand_dims(face_tensor, axis=0)
 
         # Inference
-        input_name = self.session.get_inputs()[0].name
-        logits = self.session.run(None, {input_name: face_tensor})[0][0]
+        logits = self.session.run(None, {self._input_name: face_tensor})[0][0]
         
         e_x = np.exp(logits - np.max(logits))
         probs = e_x / e_x.sum()
 
-        real_score = float(probs[1]) 
-        is_real = real_score > self.liveness_threshold
+        real_score = float(probs[1])
 
-        return is_real, real_score
+        # temporal smoothing: running average over 30 frames
+        self.score_history.append(real_score)
+        avg_score = sum(self.score_history) / len(self.score_history)
+        is_real = avg_score > self.liveness_threshold
+
+        return is_real, avg_score

@@ -304,7 +304,11 @@ def main():
     database.load()
     
     # Initialize face recognition model (shared)
-    models = Models()
+    models = Models(
+        provider=config.get("processing", {}).get("provider", "cuda"),
+        model_name=config["recognition"]["model_name"],
+        det_size=tuple(config["recognition"]["det_size"])
+    )
     
     # Initialize enrollment engine
     enroller = EnrollmentEngine(duplicate_threshold=duplicate_threshold, models=models)

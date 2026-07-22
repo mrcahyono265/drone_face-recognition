@@ -3,7 +3,7 @@ import threading
 import os
 
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
-    "rtsp_transport;tcp"
+    "rtsp_transport;udp"
     "|fflags;nobuffer"
     "|flags;low_delay"
     "|analyzeduration;1000000"
@@ -38,7 +38,8 @@ class RTSPStream:
                 stale_counter += 1
                 if stale_counter > 30:
                     self.stream.release()
-                    self.stream = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
+                    # ponytail: fallback to ?transport=udp if env var not picked up
+                    self.stream = cv2.VideoCapture(self.url + "?transport=udp", cv2.CAP_FFMPEG)
                     self.stream.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                     stale_counter = 0
                 continue

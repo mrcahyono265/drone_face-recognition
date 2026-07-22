@@ -1,7 +1,8 @@
 camera:
-  source: 0
-  type: "webcam"
+  source: 1
+  type: "video"
   rtsp_url: "rtsp://192.168.1.1:7070/webcam"
+  video_dir: "test"
 
 dataset:
   root: "dataset"
@@ -11,19 +12,19 @@ dataset:
   supported_video_formats: [".mp4"]
 
 recognition:
-  similarity_threshold: 0.45
+  similarity_threshold: 0.39
   model_name: "buffalo_sc"
-  det_size: [320, 320]
+  det_size: [960, 960]
 
 spoofing:
   model_path: "models/MiniFASNetV2.onnx"
   liveness_threshold: 0.85
 
 processing:
-  provider: "cpu"
-  frame_skip: 4
+  provider: "cuda"
+  frame_skip: 0
   fps_smoothing: 0.9
-  headless: false
+  headless: true
 
 database:
   mode: "multiple"
@@ -31,12 +32,12 @@ database:
   path: "database/face_db.pkl"
 
 enrollment:
-  duplicate_threshold: 0.995
-  sampling_interval_ms: 300
+  duplicate_threshold: 0.92
+  sampling_interval_ms: 100
   validation:
-    min_face_size: 80
-    min_face_confidence: 0.7
-    max_blur_score: 650
+    min_face_size: 50
+    min_face_confidence: 0.5
+    max_blur_score: 1000
 
 output:
   snapshot_dir: "inference_output"
@@ -48,3 +49,7 @@ reports:
 logging:
   level: "INFO"
   verbose: false
+
+debug:
+  csv_enabled: true
+  csv_path: "reports/debug_latest.csv"

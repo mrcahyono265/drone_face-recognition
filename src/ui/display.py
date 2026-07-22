@@ -4,8 +4,9 @@ import os
 from datetime import datetime
 
 class UI:
-    def __init__(self, output_dir="inference_output"):
+    def __init__(self, output_dir="inference_output", source_prefix="webcam"):
         self.output_dir = output_dir
+        self.source_prefix = source_prefix
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
@@ -21,23 +22,33 @@ class UI:
         cv2.imwrite(filename, frame) 
         print(f"[INFO] Snapshot taken and saved: {filename}")
 
+    def start_recording(self, filename):
+        """Start recording to a specific file."""
+        if self.is_recording:
+            self.stop_recording()
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        self.out_video = cv2.VideoWriter(filename, fourcc, 25.0, (self.frame_w, self.frame_h))
+        self.is_recording = True
+        print(f"[INFO] Start recording: {filename}")
+
+    def stop_recording(self):
+        """Stop current recording."""
+        if not self.is_recording:
+            return
+        self.is_recording = False
+        if self.out_video is not None:
+            self.out_video.release()
+            self.out_video = None
+        print("[INFO] Recording ended")
+
     def toggle_recording(self):
         """Execute when 'R' key is pressed for toggling recording"""
         if not self.is_recording:
-            # START RECORDING
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{self.output_dir}/video_{timestamp}.avi"
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            self.out_video = cv2.VideoWriter(filename, fourcc, 25.0, (self.frame_w, self.frame_h))
-            self.is_recording = True
-            print(f"[INFO] Start recording: {filename}")
+            filename = f"{self.output_dir}/{self.source_prefix}_{timestamp}.avi"
+            self.start_recording(filename)
         else:
-            # END RECORDING
-            self.is_recording = False
-            if self.out_video is not None:
-                self.out_video.release()
-                self.out_video = None
-            print("[INFO] Recording ended")
+            self.stop_recording()
 
     def process_ui(self, frame):
         # Process UI elements for each frame
